@@ -51,14 +51,11 @@ func run() {
 		imagel.Lock()
 		img := images[key.String()]
 		imagel.Unlock()
+
 		wh := <-img.wh
 		obj.Set("width", wh[0])
 		obj.Set("height", wh[1])
 		img.js <- obj
-
-		fade := game.Get("add").Call("tween", obj).Call("to", js.M{"alpha": 1}, 2500)
-		fade.Set("frameBased", true)
-		fade.Call("start")
 	})
 }
 
@@ -96,7 +93,7 @@ type Image struct {
 	js            *js.Object
 }
 
-func NewImage(url string, width, height int) *Image {
+func LoadImage(url string, width, height int) <-chan Image {
 	start.Do(run)
 
 	load.Call("image", url, url)
@@ -109,12 +106,16 @@ func NewImage(url string, width, height int) *Image {
 	images[url] = imageLoader{wh, obj}
 	imagel.Unlock()
 
-	return &Image{
-		key:    url,
-		width:  width,
-		height: height,
-		js:     <-obj,
-	}
+	c := make(chan Image)
+	go func() {
+		c <- Image{
+			key:    url,
+			width:  width,
+			height: height,
+			js:     <-obj,
+		}
+	}()
+	return c
 }
 
 func (i *Image) Pos() (int, int) {
@@ -133,9 +134,9 @@ func (i *Image) Resize(width, height int, ms ...int) {
 	tween(i.js, js.M{"width": width, "height": height}, ms...)
 }
 
-func (i *Image) Hide(b bool, ms ...int) {
+func (i *Image) Show(b bool, ms ...int) {
 	a := 0
-	if !b {
+	if b {
 		a = 1
 	}
 	tween(i.js, js.M{"alpha": a}, ms...)
