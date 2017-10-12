@@ -117,6 +117,14 @@ func NewImage(url string, width, height int) *Image {
 	}
 }
 
+func (i *Image) Pos() (int, int) {
+	return i.js.Get("x").Int(), i.js.Get("y").Int()
+}
+
+func (i *Image) Size() (int, int) {
+	return i.js.Get("width").Int(), i.js.Get("height").Int()
+}
+
 func (i *Image) Move(x, y int, ms ...int) {
 	tween(i.js, js.M{"x": x, "y": y}, ms...)
 }

@@ -14,7 +14,8 @@ func main() {
 	} {
 		img := dxweb.NewImage(url, 600-i*90, 600-i*90)
 		go func(i int) {
-			go img.Resize(60, 60, 5000-i*250)
+			width, height := img.Size()
+			go img.Resize(-width, -height, 5000-i*250)
 			img.Move(0, 0, 5000-i*250)
 			img.Hide(true, 2500-i*125)
 		}(i)
