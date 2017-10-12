@@ -8,6 +8,8 @@ import (
 )
 
 var (
+	Width, Height = 800, 600
+
 	start sync.Once
 	game  *js.Object
 
@@ -16,13 +18,26 @@ var (
 )
 
 func init() {
+	style := js.Global.Get("document").Get("body").Get("style")
+	style.Set("background", "#000000")
+	style.Set("margin", 0)
 	<-jsutil.Load("assets/js/phaser.min.js")
 }
 
 func run() {
 	f, c := jsutil.C()
-	game = js.Global.Get("Phaser").Get("Game").New(800, 600, nil, nil, js.M{"create": f})
+	phaser := js.Global.Get("Phaser")
+	game = phaser.Get("Game").New(Width, Height, nil, nil, js.M{"create": f})
 	<-c
+
+	game.Get("canvas").Set("oncontextmenu", func(e *js.Object) { e.Call("preventDefault") })
+	mode := phaser.Get("ScaleManager").Get("SHOW_ALL")
+	scale := game.Get("scale")
+	scale.Set("scaleMode", mode)
+	scale.Set("fullScreenScaleMode", mode)
+	scale.Set("pageAlignHorizontally", true)
+	scale.Set("pageAlignVertically", true)
+
 	game.Get("load").Get("onFileComplete").Call("add", func(_, key *js.Object) {
 		obj := game.Get("add").Call("image", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), key)
 		obj.Set("alpha", 0)
@@ -75,17 +90,38 @@ func NewImage(url string, width, height int) *Image {
 }
 
 func (i *Image) Move(x, y int, ms ...int) {
+	move := game.Get("add").Call("tween", i.js)
+	move.Call("to", js.M{"x": x, "y": y}, getMS(ms...))
+	move.Set("frameBased", true)
+	f, c := jsutil.C()
+	move.Get("onComplete").Call("add", f)
+	move.Call("start")
+	<-c
+}
+
+func (i *Image) Hide(b bool, ms ...int) {
+	var a float64
+	if !b {
+		a = 1
+	}
+	hide := game.Get("add").Call("tween", i.js)
+	hide.Call("to", js.M{"alpha": a}, getMS(ms...))
+	hide.Set("frameBased", true)
+	f, c := jsutil.C()
+	hide.Get("onComplete").Call("add", f)
+	hide.Call("start")
+	<-c
+}
+
+func getMS(ms ...int) int {
 	if len(ms) > 1 {
 		panic("too many arguments")
 	}
-	millis := 1
 	if len(ms) > 0 {
 		if ms[0] < 1 {
 			panic("negative or zero ms")
 		}
-		millis = ms[0]
+		return ms[0]
 	}
-	move := game.Get("add").Call("tween", i.js).Call("to", js.M{"x": x, "y": y}, millis)
-	move.Set("frameBased", true)
-	move.Call("start")
+	return 1
 }
