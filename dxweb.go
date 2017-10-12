@@ -71,11 +71,11 @@ func tween(obj *js.Object, to js.M, ms ...int) {
 
 func getMS(ms ...int) int {
 	if len(ms) > 1 {
-		jsutil.Alert("too many arguments")
+		jsutil.Panic("too many arguments")
 	}
 	if len(ms) > 0 {
 		if ms[0] < 1 {
-			jsutil.Alert("negative or zero ms")
+			jsutil.Panic("negative or zero ms")
 		}
 		return ms[0]
 	}
