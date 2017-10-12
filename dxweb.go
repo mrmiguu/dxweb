@@ -88,6 +88,7 @@ type imageLoader struct {
 }
 
 type Image struct {
+	Hit           <-chan bool
 	key           string
 	width, height int
 	js            *js.Object
@@ -108,12 +109,16 @@ func LoadImage(url string, width, height int) <-chan Image {
 
 	c := make(chan Image)
 	go func() {
-		c <- Image{
+		hit := make(chan bool, 1)
+		img := Image{
+			Hit:    hit,
 			key:    url,
 			width:  width,
 			height: height,
 			js:     <-obj,
 		}
+		img.js.Get("events").Get("onInputDown").Call("add", func() { hit <- true })
+		c <- img
 	}()
 	return c
 }
@@ -135,9 +140,13 @@ func (i *Image) Resize(width, height int, ms ...int) {
 }
 
 func (i *Image) Show(b bool, ms ...int) {
-	a := 0
-	if b {
-		a = 1
+	a := 1
+	if !b {
+		a = 0
+		i.js.Set("inputEnabled", false)
 	}
 	tween(i.js, js.M{"alpha": a}, ms...)
+	if b {
+		i.js.Set("inputEnabled", true)
+	}
 }
