@@ -8,10 +8,14 @@ import (
 )
 
 var (
-	Width, Height = 800, 600
+	Width  = 800
+	Height = 600
 
 	start sync.Once
-	game  *js.Object
+
+	phaser *js.Object
+	game   *js.Object
+	load   *js.Object
 
 	imagel sync.Mutex
 	images = map[string]imageLoader{}
@@ -26,7 +30,7 @@ func init() {
 
 func run() {
 	f, c := jsutil.C()
-	phaser := js.Global.Get("Phaser")
+	phaser = js.Global.Get("Phaser")
 	game = phaser.Get("Game").New(Width, Height, nil, nil, js.M{"create": f})
 	<-c
 
@@ -38,7 +42,8 @@ func run() {
 	scale.Set("pageAlignHorizontally", true)
 	scale.Set("pageAlignVertically", true)
 
-	game.Get("load").Get("onFileComplete").Call("add", func(_, key *js.Object) {
+	load = game.Get("load")
+	load.Get("onFileComplete").Call("add", func(_, key *js.Object) {
 		obj := game.Get("add").Call("image", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), key)
 		obj.Set("alpha", 0)
 		obj.Get("anchor").Call("setTo", 0.5, 0.5)
@@ -57,6 +62,29 @@ func run() {
 	})
 }
 
+func tween(obj *js.Object, to js.M, ms ...int) {
+	move := game.Get("add").Call("tween", obj)
+	move.Call("to", to, getMS(ms...))
+	move.Set("frameBased", true)
+	f, c := jsutil.C()
+	move.Get("onComplete").Call("add", f)
+	move.Call("start")
+	<-c
+}
+
+func getMS(ms ...int) int {
+	if len(ms) > 1 {
+		jsutil.Alert("too many arguments")
+	}
+	if len(ms) > 0 {
+		if ms[0] < 1 {
+			jsutil.Alert("negative or zero ms")
+		}
+		return ms[0]
+	}
+	return 1
+}
+
 type imageLoader struct {
 	wh <-chan [2]int
 	js chan<- *js.Object
@@ -71,8 +99,8 @@ type Image struct {
 func NewImage(url string, width, height int) *Image {
 	start.Do(run)
 
-	game.Get("load").Call("image", url, url)
-	game.Get("load").Call("start")
+	load.Call("image", url, url)
+	load.Call("start")
 
 	wh := make(chan [2]int, 1)
 	wh <- [2]int{width, height}
@@ -89,18 +117,12 @@ func NewImage(url string, width, height int) *Image {
 	}
 }
 
-func tween(obj *js.Object, to js.M, ms ...int) {
-	move := game.Get("add").Call("tween", obj)
-	move.Call("to", to, getMS(ms...))
-	move.Set("frameBased", true)
-	f, c := jsutil.C()
-	move.Get("onComplete").Call("add", f)
-	move.Call("start")
-	<-c
-}
-
 func (i *Image) Move(x, y int, ms ...int) {
 	tween(i.js, js.M{"x": x, "y": y}, ms...)
+}
+
+func (i *Image) Resize(width, height int, ms ...int) {
+	tween(i.js, js.M{"width": width, "height": height}, ms...)
 }
 
 func (i *Image) Hide(b bool, ms ...int) {
@@ -109,17 +131,4 @@ func (i *Image) Hide(b bool, ms ...int) {
 		a = 1
 	}
 	tween(i.js, js.M{"alpha": a}, ms...)
-}
-
-func getMS(ms ...int) int {
-	if len(ms) > 1 {
-		jsutil.Alert("too many arguments")
-	}
-	if len(ms) > 0 {
-		if ms[0] < 1 {
-			jsutil.Alert("negative or zero ms")
-		}
-		return ms[0]
-	}
-	return 1
 }
