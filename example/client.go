@@ -16,7 +16,7 @@ func main() {
 		go func(i int) {
 			width, height := img.Size()
 			go img.Resize(-width, -height, 5000-i*250)
-			img.Move(0, 0, 5000-i*250)
+			img.Move(width/2, height/2, 5000-i*250)
 			img.Hide(true, 2500-i*125)
 		}(i)
 	}
