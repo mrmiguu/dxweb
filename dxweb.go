@@ -7,52 +7,44 @@ import (
 	"github.com/mrmiguu/jsutil"
 )
 
-const (
-	loadingms = 2500
-)
+var (
+	start sync.Once
+	game  *js.Object
 
-var game *js.Object
+	imagel sync.Mutex
+	images = map[string]imageLoader{}
+)
 
 func init() {
 	<-jsutil.Load("assets/js/phaser.min.js")
-	game = js.Global.Get("Phaser").Get("Game").New(800, 600, nil, nil, js.M{"create": create})
 }
 
-var ready = make(chan bool, 1)
+func run() {
+	f, c := jsutil.C()
+	game = js.Global.Get("Phaser").Get("Game").New(800, 600, nil, nil, js.M{"create": f})
+	<-c
+	game.Get("load").Get("onFileComplete").Call("add", func(_, key *js.Object) {
+		obj := game.Get("add").Call("image", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), key)
+		obj.Set("alpha", 0)
+		obj.Get("anchor").Call("setTo", 0.5, 0.5)
 
-func run() { <-ready }
+		imagel.Lock()
+		img := images[key.String()]
+		imagel.Unlock()
+		wh := <-img.wh
+		obj.Set("width", wh[0])
+		obj.Set("height", wh[1])
+		img.js <- obj
 
-func create() {
-	game.Get("load").Get("onFileComplete").Call("add", fileComplete)
-	ready <- true
+		fade := game.Get("add").Call("tween", obj).Call("to", js.M{"alpha": 1}, 2500)
+		fade.Set("frameBased", true)
+		fade.Call("start")
+	})
 }
-
-var start sync.Once
-
-var imagel sync.Mutex
-var images = map[string]*imageLoader{}
 
 type imageLoader struct {
 	wh <-chan [2]int
 	js chan<- *js.Object
-}
-
-func fileComplete(_, key *js.Object) {
-	obj := game.Get("add").Call("image", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), key)
-	obj.Set("alpha", 0)
-	obj.Get("anchor").Call("setTo", 0.5, 0.5)
-
-	imagel.Lock()
-	img := images[key.String()]
-	imagel.Unlock()
-	wh := <-img.wh
-	obj.Set("width", wh[0])
-	obj.Set("height", wh[1])
-	img.js <- obj
-
-	fade := game.Get("add").Call("tween", obj).Call("to", js.M{"alpha": 1}, loadingms)
-	fade.Set("frameBased", true)
-	fade.Call("start")
 }
 
 type Image struct {
@@ -71,7 +63,7 @@ func NewImage(url string, width, height int) *Image {
 	wh <- [2]int{width, height}
 	obj := make(chan *js.Object, 1)
 	imagel.Lock()
-	images[url] = &imageLoader{wh, obj}
+	images[url] = imageLoader{wh, obj}
 	imagel.Unlock()
 
 	return &Image{
