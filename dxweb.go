@@ -47,7 +47,7 @@ func fileComplete(_, cacheKey *js.Object) {
 	}()
 }
 
-func Image(url string) {
+func NewImage(url string) {
 	game.Get("load").Call("image", url, url)
 	game.Get("load").Call("start")
 }
