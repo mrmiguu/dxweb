@@ -89,9 +89,9 @@ func NewImage(url string, width, height int) *Image {
 	}
 }
 
-func (i *Image) Move(x, y int, ms ...int) {
-	move := game.Get("add").Call("tween", i.js)
-	move.Call("to", js.M{"x": x, "y": y}, getMS(ms...))
+func tween(obj *js.Object, to js.M, ms ...int) {
+	move := game.Get("add").Call("tween", obj)
+	move.Call("to", to, getMS(ms...))
 	move.Set("frameBased", true)
 	f, c := jsutil.C()
 	move.Get("onComplete").Call("add", f)
@@ -99,27 +99,25 @@ func (i *Image) Move(x, y int, ms ...int) {
 	<-c
 }
 
+func (i *Image) Move(x, y int, ms ...int) {
+	tween(i.js, js.M{"x": x, "y": y}, ms...)
+}
+
 func (i *Image) Hide(b bool, ms ...int) {
-	var a float64
+	a := 0
 	if !b {
 		a = 1
 	}
-	hide := game.Get("add").Call("tween", i.js)
-	hide.Call("to", js.M{"alpha": a}, getMS(ms...))
-	hide.Set("frameBased", true)
-	f, c := jsutil.C()
-	hide.Get("onComplete").Call("add", f)
-	hide.Call("start")
-	<-c
+	tween(i.js, js.M{"alpha": a}, ms...)
 }
 
 func getMS(ms ...int) int {
 	if len(ms) > 1 {
-		panic("too many arguments")
+		jsutil.Alert("too many arguments")
 	}
 	if len(ms) > 0 {
 		if ms[0] < 1 {
-			panic("negative or zero ms")
+			jsutil.Alert("negative or zero ms")
 		}
 		return ms[0]
 	}
