@@ -12,13 +12,16 @@ func main() {
 		"assets/pics/acryl_bobablast.png",
 		"assets/pics/alex-bisleys_horsy_5.png",
 	} {
-		img := dxweb.NewImage(url, 600-i*90, 600-i*90)
-		img.Show(true, 2500)
-		go func(img dxweb.Image, i int) {
+		go func(ld <-chan dxweb.Image, i int) {
+			img := <-ld
+			img.Show(true, 2500)
+
 			width, height := img.Size()
+
 			go img.Resize(-width, -height, 5000-i*250)
 			img.Move(width/2, height/2, 5000-i*250)
 			img.Show(false, 2500-i*125)
-		}(img, i)
+
+		}(dxweb.LoadImage(url, 600-i*90, 600-i*90), i)
 	}
 }
