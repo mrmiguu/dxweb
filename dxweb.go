@@ -17,11 +17,10 @@ var (
 	game   *js.Object
 	load   *js.Object
 
-	objl sync.Mutex
-	objs = map[string]chan<- *js.Object{}
-
 	orderl sync.RWMutex
 	orders []order
+	objl   sync.Mutex
+	objs   = map[string]chan<- *js.Object{}
 )
 
 type order struct {
@@ -68,7 +67,6 @@ func run() {
 			break
 		}
 		orderl.RUnlock()
-
 		if obj == nil {
 			jsutil.Panic("object key not found")
 		}
@@ -115,15 +113,15 @@ func LoadImage(url string) <-chan Image {
 	orderl.Lock()
 	orders = append(orders, order{url, make(chan bool, 1)})
 	orderl.Unlock()
+	load.Call("image", url, url)
+	load.Call("start")
 
 	objc := make(chan *js.Object)
 	objl.Lock()
 	objs[url] = objc
 	objl.Unlock()
-	load.Call("image", url, url)
-	load.Call("start")
 
-	c := make(chan Image)
+	imgc := make(chan Image)
 	go func() {
 		hit := make(chan bool, 1)
 		img := Image{
@@ -134,9 +132,9 @@ func LoadImage(url string) <-chan Image {
 		img.js.Set("alpha", 0)
 		img.js.Get("anchor").Call("setTo", 0.5, 0.5)
 		img.js.Get("events").Get("onInputDown").Call("add", func() { hit <- true })
-		c <- img
+		imgc <- img
 	}()
-	return c
+	return imgc
 }
 
 func (i *Image) Pos() (int, int) {
