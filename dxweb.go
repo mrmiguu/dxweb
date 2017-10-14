@@ -17,9 +17,17 @@ var (
 	game   *js.Object
 	load   *js.Object
 
-	imagel sync.Mutex
-	images = map[string]imageLoader{}
+	objl sync.Mutex
+	objs = map[string]chan<- *js.Object{}
+
+	orderl sync.RWMutex
+	orders []order
 )
+
+type order struct {
+	key string
+	ld  chan bool
+}
 
 func init() {
 	style := js.Global.Get("document").Get("body").Get("style")
@@ -44,18 +52,31 @@ func run() {
 
 	load = game.Get("load")
 	load.Get("onFileComplete").Call("add", func(_, key *js.Object) {
-		obj := game.Get("add").Call("image", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), key)
-		obj.Set("alpha", 0)
-		obj.Get("anchor").Call("setTo", 0.5, 0.5)
+		k := key.String()
+		var obj *js.Object
 
-		imagel.Lock()
-		img := images[key.String()]
-		imagel.Unlock()
+		orderl.RLock()
+		for i, ord := range orders {
+			if ord.key != k {
+				continue
+			}
+			if i > 0 {
+				<-orders[i-1].ld
+			}
+			obj = game.Get("add").Call("image", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), k)
+			ord.ld <- true
+			break
+		}
+		orderl.RUnlock()
 
-		wh := <-img.wh
-		obj.Set("width", wh[0])
-		obj.Set("height", wh[1])
-		img.js <- obj
+		if obj == nil {
+			jsutil.Panic("object key not found")
+		}
+
+		objl.Lock()
+		objc := objs[k]
+		objl.Unlock()
+		objc <- obj
 	})
 }
 
@@ -82,41 +103,36 @@ func getMS(ms ...int) int {
 	return 1
 }
 
-type imageLoader struct {
-	wh <-chan [2]int
-	js chan<- *js.Object
-}
-
 type Image struct {
-	Hit           <-chan bool
-	key           string
-	width, height int
-	js            *js.Object
+	Hit <-chan bool
+	key string
+	js  *js.Object
 }
 
-func LoadImage(url string, width, height int) <-chan Image {
+func LoadImage(url string) <-chan Image {
 	start.Do(run)
 
+	orderl.Lock()
+	orders = append(orders, order{url, make(chan bool, 1)})
+	orderl.Unlock()
+
+	objc := make(chan *js.Object)
+	objl.Lock()
+	objs[url] = objc
+	objl.Unlock()
 	load.Call("image", url, url)
 	load.Call("start")
-
-	wh := make(chan [2]int, 1)
-	wh <- [2]int{width, height}
-	obj := make(chan *js.Object, 1)
-	imagel.Lock()
-	images[url] = imageLoader{wh, obj}
-	imagel.Unlock()
 
 	c := make(chan Image)
 	go func() {
 		hit := make(chan bool, 1)
 		img := Image{
-			Hit:    hit,
-			key:    url,
-			width:  width,
-			height: height,
-			js:     <-obj,
+			Hit: hit,
+			key: url,
+			js:  <-objc,
 		}
+		img.js.Set("alpha", 0)
+		img.js.Get("anchor").Call("setTo", 0.5, 0.5)
 		img.js.Get("events").Get("onInputDown").Call("add", func() { hit <- true })
 		c <- img
 	}()
