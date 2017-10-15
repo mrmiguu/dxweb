@@ -1,6 +1,7 @@
 package dxweb
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/gopherjs/gopherjs/js"
@@ -17,6 +18,9 @@ var (
 	phaser *js.Object
 	game   *js.Object
 	load   *js.Object
+	add    *js.Object
+
+	centerX, centerY int
 
 	orderl sync.RWMutex
 	orders []order
@@ -71,6 +75,8 @@ func run() {
 	scale.Set("pageAlignVertically", true)
 	scale.Call("refresh")
 
+	centerX, centerY = game.Get("world").Get("centerX").Int(), game.Get("world").Get("centerY").Int()
+
 	load = game.Get("load")
 	load.Get("onFileComplete").Call("add", func(_, key *js.Object) {
 		go func() {
@@ -90,6 +96,8 @@ func run() {
 			orderl.RUnlock()
 		}()
 	})
+
+	add = game.Get("add")
 }
 
 func loadHit() {
@@ -100,7 +108,7 @@ func loadHit() {
 }
 
 func tween(obj *js.Object, to js.M, ms ...int) {
-	move := game.Get("add").Call("tween", obj)
+	move := add.Call("tween", obj)
 	move.Call("to", to, getMS(ms...))
 	move.Set("frameBased", true)
 	f, c := jsutil.C()
@@ -141,7 +149,7 @@ func LoadImage(url string) <-chan Image {
 
 	imgc := make(chan Image)
 	go func() {
-		obj := game.Get("add").Call("image", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), <-ord.keyc)
+		obj := add.Call("image", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), <-ord.keyc)
 		ord.ld <- true
 
 		obj.Set("alpha", 0)
@@ -209,7 +217,7 @@ func LoadSound(url string) <-chan Sound {
 
 	sfxc := make(chan Sound)
 	go func() {
-		obj := game.Get("add").Call("audio", <-ord.keyc)
+		obj := add.Call("audio", <-ord.keyc)
 		ord.ld <- true
 
 		sfxc <- Sound{
@@ -222,4 +230,69 @@ func LoadSound(url string) <-chan Sound {
 
 func (s Sound) Play() {
 	s.js.Call("play")
+}
+
+type Text struct {
+	Hit <-chan bool
+	js  *js.Object
+}
+
+func NewText(lines ...string) Text {
+	obj := add.Call("text", centerX, centerY, strings.Join(lines, "\n"))
+	obj.Set("alpha", 0)
+	obj.Set("align", "center")
+	obj.Get("anchor").Call("set", 0.5)
+	obj.Set("font", "Arial")
+	obj.Set("fontWeight", "normal")
+	obj.Set("fontSize", "12")
+	obj.Set("fill", "#ffffff")
+	obj.Call("setShadow", 0, -1, "rgba(0,0,0,1)", 1)
+
+	hit := make(chan bool)
+	obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func() { hit <- true }))
+
+	return Text{
+		Hit: hit,
+		js:  obj,
+	}
+}
+
+func (t Text) Pos() (int, int) {
+	return t.js.Get("x").Int(), t.js.Get("y").Int()
+}
+
+func (t *Text) Move(x, y int, ms ...int) {
+	tween(t.js, js.M{"x": x, "y": y}, ms...)
+}
+
+func (t Text) Size() (int, int) {
+	return t.js.Get("width").Int(), t.js.Get("height").Int()
+}
+
+func (t Text) Get() string {
+	return t.js.Get("text").String()
+}
+
+func (t *Text) Set(lines ...string) {
+	t.js.Set("text", strings.Join(lines, "\n"))
+}
+
+func (t *Text) Recolor(hex string) {
+	t.js.Set("fill", hex)
+}
+
+func (t *Text) Resize(size int, ms ...int) {
+	tween(t.js, js.M{"fontSize": size}, ms...)
+}
+
+func (t *Text) Show(b bool, ms ...int) {
+	a := 1
+	if !b {
+		a = 0
+		t.js.Set("inputEnabled", false)
+	}
+	tween(t.js, js.M{"alpha": a}, ms...)
+	if b {
+		t.js.Set("inputEnabled", true)
+	}
 }
