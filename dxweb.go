@@ -9,9 +9,8 @@ import (
 )
 
 var (
-	Width    = 800
-	Height   = 600
-	HitSound = ""
+	Width  = 800
+	Height = 600
 
 	start sync.Once
 
@@ -24,9 +23,6 @@ var (
 
 	orderl sync.RWMutex
 	orders []order
-
-	ldhit  sync.Once
-	hitsfx Sound
 )
 
 type order struct {
@@ -100,13 +96,6 @@ func run() {
 	add = game.Get("add")
 }
 
-func loadHit() {
-	if len(HitSound) == 0 {
-		return
-	}
-	hitsfx = <-LoadSound(HitSound)
-}
-
 func tween(obj *js.Object, to js.M, ms ...int) {
 	move := add.Call("tween", obj)
 	move.Call("to", to, getMS(ms...))
@@ -138,7 +127,6 @@ type Image struct {
 
 func LoadImage(url string) <-chan Image {
 	start.Do(run)
-	ldhit.Do(loadHit)
 
 	ord := order{url, make(chan string, 1), make(chan bool, 1)}
 	orderl.Lock()
@@ -156,12 +144,7 @@ func LoadImage(url string) <-chan Image {
 		obj.Get("anchor").Call("setTo", 0.5, 0.5)
 
 		hit := make(chan bool)
-		obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func() {
-			if hitsfx.js != nil {
-				hitsfx.Play()
-			}
-			hit <- true
-		}))
+		obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func() { hit <- true }))
 
 		imgc <- Image{
 			Hit: hit,
