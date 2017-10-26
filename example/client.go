@@ -15,7 +15,7 @@ func main() {
 		go func(ld <-chan dxweb.Image, i int) {
 			img := <-ld
 			img.Resize(600-i*90, 600-i*90)
-			img.Show(true, 2500)
+			img.Show(true)
 
 			width, height := img.Size()
 

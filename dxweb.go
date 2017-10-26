@@ -14,6 +14,7 @@ var (
 
 	start sync.Once
 
+	body   *js.Object
 	phaser *js.Object
 	game   *js.Object
 	load   *js.Object
@@ -35,10 +36,13 @@ func init() {
 	style := js.Global.Get("document").Get("body").Get("style")
 
 	document := js.Global.Get("document")
+	body = document.Get("body")
+	body.Get("style").Set("visibility", "hidden")
+
 	meta := document.Call("createElement", "meta")
 	meta.Set("name", "viewport")
-	meta.Set("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0")
-	document.Get("body").Call("appendChild", meta)
+	meta.Set("content", "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0")
+	body.Call("appendChild", meta)
 
 	style.Set("background", "#000000")
 	style.Set("margin", 0)
@@ -54,22 +58,14 @@ func run() {
 	game.Get("canvas").Set("oncontextmenu", func(e *js.Object) { e.Call("preventDefault") })
 
 	scale := game.Get("scale")
-
-	window := js.Global.Get("window")
-	innerWidth, innerHeight := window.Get("innerWidth").Float(), window.Get("innerHeight").Float()
-	if Height > Width {
-		newWidth := (float64(Width) / float64(Height)) * innerHeight
-		scale.Call("setMinMax", newWidth, innerHeight, newWidth, innerHeight)
-	} else {
-		newHeight := (float64(Height) / float64(Width)) * innerWidth
-		scale.Call("setMinMax", innerWidth, newHeight, innerWidth, newHeight)
-	}
-
 	mode := phaser.Get("ScaleManager").Get("SHOW_ALL")
 	scale.Set("scaleMode", mode)
 	scale.Set("pageAlignHorizontally", true)
 	scale.Set("pageAlignVertically", true)
-	scale.Call("refresh")
+
+	js.Global.Call("setTimeout", func() {
+		body.Get("style").Set("visibility", "visible")
+	}, 200)
 
 	centerX, centerY = game.Get("world").Get("centerX").Int(), game.Get("world").Get("centerY").Int()
 
@@ -144,7 +140,7 @@ func LoadImage(url string) <-chan Image {
 		obj.Get("anchor").Call("setTo", 0.5, 0.5)
 
 		hit := make(chan bool)
-		obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func() { hit <- true }))
+		obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func(_ ...*js.Object) { hit <- true }))
 
 		imgc <- Image{
 			Hit: hit,
@@ -232,7 +228,7 @@ func NewText(lines ...string) Text {
 	obj.Call("setShadow", 0, -1, "rgba(0,0,0,1)", 1)
 
 	hit := make(chan bool)
-	obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func() { hit <- true }))
+	obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func(_ ...*js.Object) { hit <- true }))
 
 	return Text{
 		Hit: hit,
