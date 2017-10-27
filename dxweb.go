@@ -58,6 +58,15 @@ func run() {
 	game.Get("canvas").Set("oncontextmenu", func(e *js.Object) { e.Call("preventDefault") })
 
 	scale := game.Get("scale")
+	window := js.Global.Get("window")
+	if iW, iH := window.Get("innerWidth").Float(), window.Get("innerHeight").Float(); Height > Width {
+		newW := (float64(Width) / float64(Height)) * iH
+		scale.Call("setMinMax", newW, iH, newW, iH)
+	} else {
+		newH := (float64(Height) / float64(Width)) * iW
+		scale.Call("setMinMax", iW, newH, iW, newH)
+	}
+
 	mode := phaser.Get("ScaleManager").Get("SHOW_ALL")
 	scale.Set("scaleMode", mode)
 	scale.Set("pageAlignHorizontally", true)
