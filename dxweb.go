@@ -1,6 +1,8 @@
 package dxweb
 
 import (
+	"image/png"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -137,6 +139,7 @@ func LoadImage(url string) <-chan Image {
 	orderl.Lock()
 	orders = append(orders, ord)
 	orderl.Unlock()
+
 	load.Call("image", url, url)
 	load.Call("start")
 
@@ -186,6 +189,106 @@ func (i *Image) Show(b bool, ms ...int) {
 	if b {
 		i.js.Set("inputEnabled", true)
 	}
+}
+
+type Sprite struct {
+	Hit    <-chan bool
+	key    string
+	frames int
+	anims  []<-chan []*js.Object
+	js     *js.Object
+}
+
+func LoadSprite(url string, frames, states int) <-chan Sprite {
+	start.Do(run)
+
+	ord := order{url, make(chan string, 1), make(chan bool, 1)}
+	orderl.Lock()
+	orders = append(orders, ord)
+	orderl.Unlock()
+
+	resp, err := http.Get(url)
+	if err != nil {
+		jsutil.Panic(err)
+	}
+	img, err := png.Decode(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		jsutil.Panic(err)
+	}
+	size := img.Bounds().Size()
+	load.Call("spritesheet", url, url, size.X/frames, size.Y/states, frames*states)
+	load.Call("start")
+
+	sprc := make(chan Sprite)
+	go func() {
+		obj := add.Call("sprite", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), <-ord.keyc)
+		ord.ld <- true
+
+		anims := make([]<-chan []*js.Object, states)
+		for i := 0; i < states; i++ {
+			s := make(js.S, frames)
+			for j := 0; j < frames; j++ {
+				s[j] = (i * frames) + j
+			}
+			anim := obj.Get("animations").Call("add", i, s)
+			f, c := jsutil.C()
+			anim.Get("onComplete").Call("add", f)
+			anims[i] = c
+		}
+		obj.Get("animations").Set("frame", frames-1)
+		obj.Set("alpha", 0)
+		obj.Get("anchor").Call("setTo", 0.5, 0.5)
+
+		hit := make(chan bool)
+		obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func(_ ...*js.Object) { hit <- true }))
+
+		sprc <- Sprite{
+			Hit:    hit,
+			key:    url,
+			frames: frames,
+			anims:  anims,
+			js:     obj,
+		}
+	}()
+	return sprc
+}
+
+func (s Sprite) Pos() (int, int) {
+	return s.js.Get("x").Int(), s.js.Get("y").Int()
+}
+
+func (s Sprite) Size() (int, int) {
+	return s.js.Get("width").Int(), s.js.Get("height").Int()
+}
+
+func (s *Sprite) Move(x, y int, ms ...int) {
+	tween(s.js, js.M{"x": x, "y": y}, ms...)
+}
+
+func (s *Sprite) Resize(width, height int, ms ...int) {
+	tween(s.js, js.M{"width": width, "height": height}, ms...)
+}
+
+func (s *Sprite) Show(b bool, ms ...int) {
+	a := 1
+	if !b {
+		a = 0
+		s.js.Set("inputEnabled", false)
+	}
+	tween(s.js, js.M{"alpha": a}, ms...)
+	if b {
+		s.js.Set("inputEnabled", true)
+	}
+}
+
+func (s Sprite) Play(state int, ms ...int) {
+	fps := s.frames * 1000 / getMS(ms...)
+	if len(ms) == 0 {
+		fps = 60
+	}
+	s.js.Get("animations").Call("play", state, fps)
+	<-s.anims[state]
 }
 
 type Sound struct {
