@@ -266,6 +266,10 @@ func (s *Sprite) Move(x, y int, ms ...int) {
 	tween(s.js, js.M{"x": x, "y": y}, ms...)
 }
 
+func (s *Sprite) Rotate(θ float64, ms ...int) {
+	tween(s.js, js.M{"angle": θ}, ms...)
+}
+
 func (s *Sprite) Resize(width, height int, ms ...int) {
 	tween(s.js, js.M{"width": width, "height": height}, ms...)
 }
