@@ -294,9 +294,10 @@ func (s *Sprite) Show(b bool, ms ...int) {
 }
 
 func (s Sprite) Play(state int, ms ...int) {
-	fps := s.frames * 1000 / getMS(ms...)
-	if len(ms) == 0 {
-		fps = 60
+	millis := getMS(ms...)
+	fps := 60
+	if millis > 0 {
+		fps = s.frames * 1000 / millis
 	}
 	s.js.Get("animations").Call("play", state, fps)
 	<-s.anims[state]
