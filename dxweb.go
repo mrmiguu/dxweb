@@ -104,8 +104,15 @@ func run() {
 }
 
 func tween(obj *js.Object, to js.M, ms ...int) {
+	millis := getMS(ms...)
+	if millis == 0 {
+		for k, v := range to {
+			obj.Set(k, v)
+		}
+		return
+	}
 	move := add.Call("tween", obj)
-	move.Call("to", to, getMS(ms...))
+	move.Call("to", to, millis)
 	move.Set("frameBased", true)
 	f, c := jsutil.C()
 	move.Get("onComplete").Call("add", f)
@@ -118,12 +125,12 @@ func getMS(ms ...int) int {
 		jsutil.Panic("too many arguments")
 	}
 	if len(ms) > 0 {
-		if ms[0] < 1 {
-			jsutil.Panic("negative or zero ms")
+		if ms[0] < 0 {
+			jsutil.Panic("negative ms")
 		}
 		return ms[0]
 	}
-	return 1
+	return 0
 }
 
 type Image struct {
