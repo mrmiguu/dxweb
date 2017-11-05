@@ -359,6 +359,10 @@ func (s Sound) Play() {
 	s.js.Call("play")
 }
 
+func (s Sound) Loop() {
+	s.js.Call("loopFull")
+}
+
 type Text struct {
 	Hit <-chan bool
 	js  *js.Object
