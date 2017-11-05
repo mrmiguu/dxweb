@@ -133,6 +133,42 @@ func getMS(ms ...int) int {
 	return 0
 }
 
+func pos(o *js.Object) (int, int) {
+	return o.Get("x").Int(), o.Get("y").Int()
+}
+
+func size(o *js.Object) (int, int) {
+	return o.Get("width").Int(), o.Get("height").Int()
+}
+
+func bringToTop(o *js.Object) {
+	o.Call("bringToTop")
+}
+
+func move(o *js.Object, x, y int, ms ...int) {
+	tween(o, js.M{"x": x, "y": y}, ms...)
+}
+
+func resize(o *js.Object, width, height int, ms ...int) {
+	tween(o, js.M{"width": width, "height": height}, ms...)
+}
+
+func show(o *js.Object, b bool, ms ...int) {
+	a := 1
+	if !b {
+		a = 0
+		o.Set("inputEnabled", false)
+	}
+	tween(o, js.M{"alpha": a}, ms...)
+	if b {
+		o.Set("inputEnabled", true)
+	}
+}
+
+func rotate(o *js.Object, θ float64, ms ...int) {
+	tween(o, js.M{"angle": θ}, ms...)
+}
+
 type Image struct {
 	Hit <-chan bool
 	key string
@@ -171,31 +207,27 @@ func LoadImage(url string) <-chan Image {
 }
 
 func (i Image) Pos() (int, int) {
-	return i.js.Get("x").Int(), i.js.Get("y").Int()
+	return pos(i.js)
 }
 
 func (i Image) Size() (int, int) {
-	return i.js.Get("width").Int(), i.js.Get("height").Int()
+	return size(i.js)
 }
 
 func (i *Image) Move(x, y int, ms ...int) {
-	tween(i.js, js.M{"x": x, "y": y}, ms...)
+	move(i.js, x, y, ms...)
 }
 
 func (i *Image) Resize(width, height int, ms ...int) {
-	tween(i.js, js.M{"width": width, "height": height}, ms...)
+	resize(i.js, width, height, ms...)
 }
 
 func (i *Image) Show(b bool, ms ...int) {
-	a := 1
-	if !b {
-		a = 0
-		i.js.Set("inputEnabled", false)
-	}
-	tween(i.js, js.M{"alpha": a}, ms...)
-	if b {
-		i.js.Set("inputEnabled", true)
-	}
+	show(i.js, b, ms...)
+}
+
+func (i *Image) BringToTop() {
+	bringToTop(i.js)
 }
 
 type Sprite struct {
@@ -262,35 +294,27 @@ func LoadSprite(url string, frames, states int) <-chan Sprite {
 }
 
 func (s Sprite) Pos() (int, int) {
-	return s.js.Get("x").Int(), s.js.Get("y").Int()
+	return pos(s.js)
 }
 
 func (s Sprite) Size() (int, int) {
-	return s.js.Get("width").Int(), s.js.Get("height").Int()
+	return size(s.js)
 }
 
 func (s *Sprite) Move(x, y int, ms ...int) {
-	tween(s.js, js.M{"x": x, "y": y}, ms...)
+	move(s.js, x, y, ms...)
 }
 
 func (s *Sprite) Rotate(θ float64, ms ...int) {
-	tween(s.js, js.M{"angle": θ}, ms...)
+	rotate(s.js, θ, ms...)
 }
 
 func (s *Sprite) Resize(width, height int, ms ...int) {
-	tween(s.js, js.M{"width": width, "height": height}, ms...)
+	resize(s.js, width, height, ms...)
 }
 
 func (s *Sprite) Show(b bool, ms ...int) {
-	a := 1
-	if !b {
-		a = 0
-		s.js.Set("inputEnabled", false)
-	}
-	tween(s.js, js.M{"alpha": a}, ms...)
-	if b {
-		s.js.Set("inputEnabled", true)
-	}
+	show(s.js, b, ms...)
 }
 
 func (s Sprite) Play(state int, ms ...int) {
@@ -361,15 +385,11 @@ func NewText(lines ...string) Text {
 }
 
 func (t Text) Pos() (int, int) {
-	return t.js.Get("x").Int(), t.js.Get("y").Int()
-}
-
-func (t *Text) Move(x, y int, ms ...int) {
-	tween(t.js, js.M{"x": x, "y": y}, ms...)
+	return pos(t.js)
 }
 
 func (t Text) Size() (int, int) {
-	return t.js.Get("width").Int(), t.js.Get("height").Int()
+	return size(t.js)
 }
 
 func (t Text) Get() string {
@@ -378,6 +398,10 @@ func (t Text) Get() string {
 
 func (t *Text) Set(lines ...string) {
 	t.js.Set("text", strings.Join(lines, "\n"))
+}
+
+func (t *Text) Move(x, y int, ms ...int) {
+	tween(t.js, js.M{"x": x, "y": y}, ms...)
 }
 
 func (t *Text) Recolor(hex string) {
@@ -389,13 +413,5 @@ func (t *Text) Resize(size int, ms ...int) {
 }
 
 func (t *Text) Show(b bool, ms ...int) {
-	a := 1
-	if !b {
-		a = 0
-		t.js.Set("inputEnabled", false)
-	}
-	tween(t.js, js.M{"alpha": a}, ms...)
-	if b {
-		t.js.Set("inputEnabled", true)
-	}
+	show(t.js, b, ms...)
 }
