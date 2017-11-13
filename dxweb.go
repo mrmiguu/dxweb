@@ -153,15 +153,15 @@ func resize(o *js.Object, width, height int, ms ...int) {
 	tween(o, js.M{"width": width, "height": height}, ms...)
 }
 
-func show(o *js.Object, b bool, ms ...int) {
+func show(o *js.Object, b bool, disabled bool, ms ...int) {
 	a := 1
 	if !b {
 		a = 0
-		o.Set("inputEnabled", false)
+		disable(o, true)
 	}
 	tween(o, js.M{"alpha": a}, ms...)
-	if b {
-		o.Set("inputEnabled", true)
+	if b && !disabled {
+		disable(o, false)
 	}
 }
 
@@ -169,10 +169,19 @@ func rotate(o *js.Object, θ float64, ms ...int) {
 	tween(o, js.M{"angle": θ}, ms...)
 }
 
+func disable(o *js.Object, b bool) {
+	o.Set("inputEnabled", !b)
+	if !b {
+		o.Get("input").Set("pixelPerfectClick", true)
+	}
+}
+
 type Image struct {
 	Hit <-chan bool
-	key string
-	js  *js.Object
+
+	disabled bool
+	key      string
+	js       *js.Object
 }
 
 func LoadImage(url string) <-chan Image {
@@ -195,7 +204,13 @@ func LoadImage(url string) <-chan Image {
 		obj.Get("anchor").Call("setTo", 0.5, 0.5)
 
 		hit := make(chan bool)
-		obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func(_ ...*js.Object) { hit <- true }))
+		obj.Get("events").Get("onInputDown").Call("add", func() {
+			go func() {
+				println("hit...")
+				hit <- true
+				println("hit!")
+			}()
+		})
 
 		imgc <- Image{
 			Hit: hit,
@@ -218,12 +233,21 @@ func (i *Image) Move(x, y int, ms ...int) {
 	move(i.js, x, y, ms...)
 }
 
+func (i *Image) Rotate(θ float64, ms ...int) {
+	rotate(i.js, θ, ms...)
+}
+
 func (i *Image) Resize(width, height int, ms ...int) {
 	resize(i.js, width, height, ms...)
 }
 
 func (i *Image) Show(b bool, ms ...int) {
-	show(i.js, b, ms...)
+	show(i.js, b, i.disabled, ms...)
+}
+
+func (i *Image) Disable(b bool) {
+	i.disabled = b
+	disable(i.js, b)
 }
 
 func (i *Image) BringToTop() {
@@ -231,11 +255,13 @@ func (i *Image) BringToTop() {
 }
 
 type Sprite struct {
-	Hit    <-chan bool
-	key    string
-	frames int
-	anims  []<-chan []*js.Object
-	js     *js.Object
+	Hit <-chan bool
+
+	disabled bool
+	key      string
+	frames   int
+	anims    []<-chan []*js.Object
+	js       *js.Object
 }
 
 func LoadSprite(url string, frames, states int) <-chan Sprite {
@@ -280,7 +306,13 @@ func LoadSprite(url string, frames, states int) <-chan Sprite {
 		obj.Get("anchor").Call("setTo", 0.5, 0.5)
 
 		hit := make(chan bool)
-		obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func(_ ...*js.Object) { hit <- true }))
+		obj.Get("events").Get("onInputDown").Call("add", func() {
+			go func() {
+				println("hit...")
+				hit <- true
+				println("hit!")
+			}()
+		})
 
 		sprc <- Sprite{
 			Hit:    hit,
@@ -314,10 +346,14 @@ func (s *Sprite) Resize(width, height int, ms ...int) {
 }
 
 func (s *Sprite) Show(b bool, ms ...int) {
-	show(s.js, b, ms...)
+	show(s.js, b, s.disabled, ms...)
 }
 
-func (s Sprite) Play(state int, ms ...int) {
+func (s *Sprite) Disable(b bool) {
+	disable(s.js, b)
+}
+
+func (s *Sprite) Play(state int, ms ...int) {
 	millis := getMS(ms...)
 	fps := 60
 	if millis > 0 {
@@ -365,7 +401,9 @@ func (s Sound) Loop() {
 
 type Text struct {
 	Hit <-chan bool
-	js  *js.Object
+
+	disabled bool
+	js       *js.Object
 }
 
 func NewText(lines ...string) Text {
@@ -380,7 +418,13 @@ func NewText(lines ...string) Text {
 	obj.Call("setShadow", 0, -1, "rgba(0,0,0,1)", 1)
 
 	hit := make(chan bool)
-	obj.Get("events").Get("onInputDown").Call("add", jsutil.F(func(_ ...*js.Object) { hit <- true }))
+	obj.Get("events").Get("onInputDown").Call("add", func() {
+		go func() {
+			println("hit...")
+			hit <- true
+			println("hit!")
+		}()
+	})
 
 	return Text{
 		Hit: hit,
@@ -417,5 +461,9 @@ func (t *Text) Resize(size int, ms ...int) {
 }
 
 func (t *Text) Show(b bool, ms ...int) {
-	show(t.js, b, ms...)
+	show(t.js, b, t.disabled, ms...)
+}
+
+func (t *Text) Disable(b bool) {
+	disable(t.js, b)
 }
