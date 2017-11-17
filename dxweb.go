@@ -176,6 +176,35 @@ func disable(o *js.Object, b bool) {
 	}
 }
 
+type Rect interface {
+	Pos() (int, int)
+	Size() (int, int)
+}
+
+func Top(r Rect, ms ...int) (int, int, int) {
+	x, _ := r.Pos()
+	_, height := r.Size()
+	return x, height / 2, getMS(ms...)
+}
+
+func Left(r Rect, ms ...int) (int, int, int) {
+	_, y := r.Pos()
+	width, _ := r.Size()
+	return width / 2, y, getMS(ms...)
+}
+
+func Bottom(r Rect, ms ...int) (int, int, int) {
+	x, _ := r.Pos()
+	_, height := r.Size()
+	return x, Height - (height / 2), getMS(ms...)
+}
+
+func Right(r Rect, ms ...int) (int, int, int) {
+	_, y := r.Pos()
+	width, _ := r.Size()
+	return Width - (width / 2), y, getMS(ms...)
+}
+
 type Image struct {
 	Hit <-chan bool
 
@@ -260,7 +289,7 @@ type Sprite struct {
 	disabled bool
 	key      string
 	frames   int
-	anims    []<-chan []*js.Object
+	anims    []<-chan bool
 	js       *js.Object
 }
 
@@ -290,7 +319,7 @@ func LoadSprite(url string, frames, states int) <-chan Sprite {
 		obj := add.Call("sprite", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), <-ord.keyc)
 		ord.ld <- true
 
-		anims := make([]<-chan []*js.Object, states)
+		anims := make([]<-chan bool, states)
 		for i := 0; i < states; i++ {
 			s := make(js.S, frames)
 			for j := 0; j < frames; j++ {
