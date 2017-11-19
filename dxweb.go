@@ -172,6 +172,7 @@ func rotate(o *js.Object, θ float64, ms ...int) {
 func disable(o *js.Object, b bool) {
 	o.Set("inputEnabled", !b)
 	if !b {
+		o.Get("input").Set("pixelPerfectAlpha", 1)
 		o.Get("input").Set("pixelPerfectClick", true)
 	}
 }
@@ -245,6 +246,43 @@ func LoadImage(url string) <-chan Image {
 			Hit: hit,
 			key: url,
 			js:  obj,
+		}
+	}()
+	return imgc
+}
+
+func (i *Image) LoadImage(url string) <-chan Image {
+	start.Do(run)
+
+	ord := order{url, make(chan string, 1), make(chan bool, 1)}
+	orderl.Lock()
+	orders = append(orders, ord)
+	orderl.Unlock()
+
+	load.Call("image", url, url)
+	load.Call("start")
+
+	imgc := make(chan Image)
+	go func() {
+		obj := game.Get("make").Call("image", 0, 0, <-ord.keyc)
+		ord.ld <- true
+
+		obj.Set("alpha", 0)
+		obj.Get("anchor").Call("setTo", 0.5, 0.5)
+
+		hit := make(chan bool)
+		obj.Get("events").Get("onInputDown").Call("add", func() {
+			go func() {
+				println("hit...")
+				hit <- true
+				println("hit!")
+			}()
+		})
+
+		imgc <- Image{
+			Hit: hit,
+			key: url,
+			js:  i.js.Call("addChild", obj),
 		}
 	}()
 	return imgc
