@@ -171,10 +171,6 @@ func rotate(o *js.Object, θ float64, ms ...int) {
 
 func disable(o *js.Object, b bool) {
 	o.Set("inputEnabled", !b)
-	if !b {
-		o.Get("input").Set("pixelPerfectAlpha", 1)
-		o.Get("input").Set("pixelPerfectClick", true)
-	}
 }
 
 type Rect interface {
@@ -241,6 +237,8 @@ func LoadImage(url string) <-chan Image {
 				println("hit!")
 			}()
 		})
+		obj.Get("input").Set("pixelPerfectAlpha", 1)
+		obj.Get("input").Set("pixelPerfectClick", true)
 
 		imgc <- Image{
 			Hit: hit,
@@ -278,6 +276,8 @@ func (i *Image) LoadImage(url string) <-chan Image {
 				println("hit!")
 			}()
 		})
+		obj.Get("input").Set("pixelPerfectAlpha", 1)
+		obj.Get("input").Set("pixelPerfectClick", true)
 
 		imgc <- Image{
 			Hit: hit,
@@ -380,6 +380,8 @@ func LoadSprite(url string, frames, states int) <-chan Sprite {
 				println("hit!")
 			}()
 		})
+		obj.Get("input").Set("pixelPerfectAlpha", 1)
+		obj.Get("input").Set("pixelPerfectClick", true)
 
 		sprc <- Sprite{
 			Hit:    hit,
