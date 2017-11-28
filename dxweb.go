@@ -237,8 +237,6 @@ func LoadImage(url string) <-chan Image {
 				println("hit!")
 			}()
 		})
-		obj.Get("input").Set("pixelPerfectAlpha", 1)
-		obj.Get("input").Set("pixelPerfectClick", true)
 
 		imgc <- Image{
 			Hit: hit,
@@ -276,8 +274,6 @@ func (i *Image) LoadImage(url string) <-chan Image {
 				println("hit!")
 			}()
 		})
-		obj.Get("input").Set("pixelPerfectAlpha", 1)
-		obj.Get("input").Set("pixelPerfectClick", true)
 
 		imgc <- Image{
 			Hit: hit,
@@ -315,6 +311,10 @@ func (i *Image) Show(b bool, ms ...int) {
 func (i *Image) Disable(b bool) {
 	i.disabled = b
 	disable(i.js, b)
+	if !b {
+		i.js.Get("input").Set("pixelPerfectAlpha", 1)
+		i.js.Get("input").Set("pixelPerfectClick", true)
+	}
 }
 
 func (i *Image) BringToTop() {
@@ -380,8 +380,6 @@ func LoadSprite(url string, frames, states int) <-chan Sprite {
 				println("hit!")
 			}()
 		})
-		obj.Get("input").Set("pixelPerfectAlpha", 1)
-		obj.Get("input").Set("pixelPerfectClick", true)
 
 		sprc <- Sprite{
 			Hit:    hit,
@@ -420,6 +418,10 @@ func (s *Sprite) Show(b bool, ms ...int) {
 
 func (s *Sprite) Disable(b bool) {
 	disable(s.js, b)
+	if !b {
+		s.js.Get("input").Set("pixelPerfectAlpha", 1)
+		s.js.Get("input").Set("pixelPerfectClick", true)
+	}
 }
 
 func (s *Sprite) Play(state int, ms ...int) {
