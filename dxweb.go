@@ -242,6 +242,7 @@ func LoadImage(url string) <-chan Image {
 				println("hit!")
 			}()
 		})
+		obj.Set("smoothed", true)
 
 		imgc <- Image{
 			Hit: hit,
@@ -279,6 +280,7 @@ func (i *Image) LoadImage(url string) <-chan Image {
 				println("hit!")
 			}()
 		})
+		obj.Set("smoothed", true)
 
 		imgc <- Image{
 			Hit: hit,
@@ -384,6 +386,7 @@ func LoadSprite(url string, frames, states int) <-chan Sprite {
 				println("hit!")
 			}()
 		})
+		obj.Set("smoothed", true)
 
 		sprc <- Sprite{
 			Hit:    hit,
@@ -425,10 +428,6 @@ func (s *Sprite) Show(b bool, ms ...int) {
 
 func (s *Sprite) Disable(b bool) {
 	disable(s.js, b)
-	if !b {
-		s.js.Get("input").Set("pixelPerfectAlpha", 1)
-		s.js.Get("input").Set("pixelPerfectClick", true)
-	}
 }
 
 func (s *Sprite) Play(state int, ms ...int) {
@@ -507,6 +506,32 @@ func NewText(lines ...string) Text {
 	return Text{
 		Hit: hit,
 		js:  obj,
+	}
+}
+
+func (i *Image) NewText(lines ...string) Text {
+	obj := game.Get("make").Call("text", 0, 0, strings.Join(lines, "\n"))
+	obj.Set("alpha", 0)
+	obj.Set("align", "center")
+	obj.Get("anchor").Call("set", 0.5)
+	obj.Set("font", "Arial")
+	obj.Set("fontWeight", "normal")
+	obj.Set("fontSize", "12")
+	obj.Set("fill", "#ffffff")
+	obj.Call("setShadow", 0, -1, "rgba(0,0,0,1)", 1)
+
+	hit := make(chan bool)
+	obj.Get("events").Get("onInputDown").Call("add", func() {
+		go func() {
+			println("hit...")
+			hit <- true
+			println("hit!")
+		}()
+	})
+
+	return Text{
+		Hit: hit,
+		js:  i.js.Call("addChild", obj),
 	}
 }
 
