@@ -173,6 +173,11 @@ func disable(o *js.Object, b bool) {
 	o.Set("inputEnabled", !b)
 }
 
+func trim(o *js.Object) {
+	o.Get("input").Set("pixelPerfectAlpha", 1)
+	o.Get("input").Set("pixelPerfectClick", true)
+}
+
 type Rect interface {
 	Pos() (int, int)
 	Size() (int, int)
@@ -306,15 +311,14 @@ func (i *Image) Resize(width, height int, ms ...int) {
 
 func (i *Image) Show(b bool, ms ...int) {
 	show(i.js, b, i.disabled, ms...)
+	if b {
+		trim(i.js)
+	}
 }
 
 func (i *Image) Disable(b bool) {
 	i.disabled = b
 	disable(i.js, b)
-	if !b {
-		i.js.Get("input").Set("pixelPerfectAlpha", 1)
-		i.js.Get("input").Set("pixelPerfectClick", true)
-	}
 }
 
 func (i *Image) BringToTop() {
@@ -414,6 +418,9 @@ func (s *Sprite) Resize(width, height int, ms ...int) {
 
 func (s *Sprite) Show(b bool, ms ...int) {
 	show(s.js, b, s.disabled, ms...)
+	if b {
+		trim(s.js)
+	}
 }
 
 func (s *Sprite) Disable(b bool) {
