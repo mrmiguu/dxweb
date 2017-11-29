@@ -79,6 +79,8 @@ func run() {
 	}, 200)
 
 	centerX, centerY = game.Get("world").Get("centerX").Int(), game.Get("world").Get("centerY").Int()
+	// game.Get("camera").Set("x", -centerX)
+	// game.Get("camera").Set("y", -centerY)
 
 	load = game.Get("load")
 	load.Get("onFileComplete").Call("add", func(_, key *js.Object) {
@@ -227,7 +229,7 @@ func LoadImage(url string) <-chan Image {
 
 	imgc := make(chan Image)
 	go func() {
-		obj := add.Call("image", game.Get("world").Get("centerX"), game.Get("world").Get("centerY"), <-ord.keyc)
+		obj := add.Call("image", centerX, centerY, <-ord.keyc)
 		ord.ld <- true
 
 		obj.Set("alpha", 0)
