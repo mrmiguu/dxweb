@@ -173,10 +173,11 @@ func rotate(o *js.Object, θ float64, ms ...int) {
 
 func disable(o *js.Object, b bool) {
 	o.Set("inputEnabled", !b)
-	if !b {
-		o.Get("input").Set("pixelPerfectAlpha", 1)
-		o.Get("input").Set("pixelPerfectClick", true)
-	}
+}
+
+func trim(o *js.Object) {
+	o.Get("input").Set("pixelPerfectAlpha", 1)
+	o.Get("input").Set("pixelPerfectClick", true)
 }
 
 type Rect interface {
@@ -243,6 +244,7 @@ func LoadImage(url string) <-chan Image {
 				println("hit!")
 			}()
 		})
+		obj.Set("smoothed", true)
 
 		imgc <- Image{
 			Hit: hit,
@@ -280,6 +282,7 @@ func (i *Image) LoadImage(url string) <-chan Image {
 				println("hit!")
 			}()
 		})
+		obj.Set("smoothed", true)
 
 		imgc <- Image{
 			Hit: hit,
@@ -312,6 +315,9 @@ func (i *Image) Resize(width, height int, ms ...int) {
 
 func (i *Image) Show(b bool, ms ...int) {
 	show(i.js, b, i.disabled, ms...)
+	if b {
+		trim(i.js)
+	}
 }
 
 func (i *Image) Disable(b bool) {
@@ -382,6 +388,7 @@ func LoadSprite(url string, frames, states int) <-chan Sprite {
 				println("hit!")
 			}()
 		})
+		obj.Set("smoothed", true)
 
 		sprc <- Sprite{
 			Hit:    hit,
@@ -416,6 +423,9 @@ func (s *Sprite) Resize(width, height int, ms ...int) {
 
 func (s *Sprite) Show(b bool, ms ...int) {
 	show(s.js, b, s.disabled, ms...)
+	if b {
+		trim(s.js)
+	}
 }
 
 func (s *Sprite) Disable(b bool) {
@@ -498,6 +508,32 @@ func NewText(lines ...string) Text {
 	return Text{
 		Hit: hit,
 		js:  obj,
+	}
+}
+
+func (i *Image) NewText(lines ...string) Text {
+	obj := game.Get("make").Call("text", 0, 0, strings.Join(lines, "\n"))
+	obj.Set("alpha", 0)
+	obj.Set("align", "center")
+	obj.Get("anchor").Call("set", 0.5)
+	obj.Set("font", "Arial")
+	obj.Set("fontWeight", "normal")
+	obj.Set("fontSize", "12")
+	obj.Set("fill", "#ffffff")
+	obj.Call("setShadow", 0, -1, "rgba(0,0,0,1)", 1)
+
+	hit := make(chan bool)
+	obj.Get("events").Get("onInputDown").Call("add", func() {
+		go func() {
+			println("hit...")
+			hit <- true
+			println("hit!")
+		}()
+	})
+
+	return Text{
+		Hit: hit,
+		js:  i.js.Call("addChild", obj),
 	}
 }
 
