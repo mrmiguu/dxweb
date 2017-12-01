@@ -39,7 +39,7 @@ func init() {
 
 	document := js.Global.Get("document")
 	body = document.Get("body")
-	body.Get("style").Set("visibility", "hidden")
+	style.Set("visibility", "hidden")
 
 	meta := document.Call("createElement", "meta")
 	meta.Set("name", "viewport")
@@ -48,6 +48,7 @@ func init() {
 
 	style.Set("background", "#000000")
 	style.Set("margin", 0)
+	style.Set("overflow", "hidden")
 	<-jsutil.Load("assets/js/phaser.min.js")
 }
 
