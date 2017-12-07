@@ -216,6 +216,7 @@ type Image struct {
 	disabled bool
 	key      string
 	js       *js.Object
+	crop     *js.Object
 }
 
 func LoadImage(url string, size ...int) <-chan Image {
@@ -231,16 +232,7 @@ func LoadImage(url string, size ...int) <-chan Image {
 
 	imgc := make(chan Image)
 	go func() {
-		var obj *js.Object
-		if len(size) == 0 {
-			obj = game.Get("add").Call("image", centerX, centerY, <-ord.keyc)
-		} else {
-			w, h := size[0], size[0]
-			if len(size) > 1 {
-				h = size[1]
-			}
-			obj = game.Get("add").Call("tileSprite", centerX, centerY, w, h, <-ord.keyc)
-		}
+		obj := game.Get("add").Call("image", centerX, centerY, <-ord.keyc)
 		ord.ld <- true
 
 		obj.Set("alpha", 0)
@@ -256,10 +248,22 @@ func LoadImage(url string, size ...int) <-chan Image {
 		})
 		obj.Set("smoothed", true)
 
+		var w, h int
+		var rect *js.Object
+		if len(size) > 0 {
+			w, h = size[0], size[0]
+			if len(size) > 1 {
+				h = size[1]
+			}
+			rect = phaser.Get("Rectangle").New(obj.Get("width").Int()/2-w/2, obj.Get("height").Int()/2-h/2, w, h)
+			obj.Call("crop", rect)
+		}
+
 		imgc <- Image{
-			Hit: hit,
-			key: url,
-			js:  obj,
+			Hit:  hit,
+			key:  url,
+			js:   obj,
+			crop: rect,
 		}
 	}()
 	return imgc
@@ -278,16 +282,7 @@ func (i *Image) LoadImage(url string, size ...int) <-chan Image {
 
 	imgc := make(chan Image)
 	go func() {
-		var obj *js.Object
-		if len(size) == 0 {
-			obj = game.Get("make").Call("image", 0, 0, <-ord.keyc)
-		} else {
-			w, h := size[0], size[0]
-			if len(size) > 1 {
-				h = size[1]
-			}
-			obj = game.Get("make").Call("tileSprite", 0, 0, w, h, <-ord.keyc)
-		}
+		obj := game.Get("make").Call("image", 0, 0, <-ord.keyc)
 		ord.ld <- true
 
 		obj.Set("alpha", 0)
@@ -303,10 +298,22 @@ func (i *Image) LoadImage(url string, size ...int) <-chan Image {
 		})
 		obj.Set("smoothed", true)
 
+		var w, h int
+		var rect *js.Object
+		if len(size) > 0 {
+			w, h = size[0], size[0]
+			if len(size) > 1 {
+				h = size[1]
+			}
+			rect = phaser.Get("Rectangle").New(obj.Get("width").Int()/2-w/2, obj.Get("height").Int()/2-h/2, w, h)
+			obj.Call("crop", rect)
+		}
+
 		imgc <- Image{
-			Hit: hit,
-			key: url,
-			js:  i.js.Call("addChild", obj),
+			Hit:  hit,
+			key:  url,
+			js:   i.js.Call("addChild", obj),
+			crop: rect,
 		}
 	}()
 	return imgc
