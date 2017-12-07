@@ -218,7 +218,7 @@ type Image struct {
 	js       *js.Object
 }
 
-func LoadImage(url string) <-chan Image {
+func LoadImage(url string, size ...int) <-chan Image {
 	start.Do(run)
 
 	ord := order{url, make(chan string, 1), make(chan bool, 1)}
@@ -231,7 +231,16 @@ func LoadImage(url string) <-chan Image {
 
 	imgc := make(chan Image)
 	go func() {
-		obj := add.Call("image", centerX, centerY, <-ord.keyc)
+		var obj *js.Object
+		if len(size) == 0 {
+			obj = game.Get("add").Call("image", centerX, centerY, <-ord.keyc)
+		} else {
+			w, h := size[0], size[0]
+			if len(size) > 1 {
+				h = size[1]
+			}
+			obj = game.Get("add").Call("tileSprite", centerX, centerY, w, h, <-ord.keyc)
+		}
 		ord.ld <- true
 
 		obj.Set("alpha", 0)
@@ -256,7 +265,7 @@ func LoadImage(url string) <-chan Image {
 	return imgc
 }
 
-func (i *Image) LoadImage(url string) <-chan Image {
+func (i *Image) LoadImage(url string, size ...int) <-chan Image {
 	start.Do(run)
 
 	ord := order{url, make(chan string, 1), make(chan bool, 1)}
@@ -269,7 +278,16 @@ func (i *Image) LoadImage(url string) <-chan Image {
 
 	imgc := make(chan Image)
 	go func() {
-		obj := game.Get("make").Call("image", 0, 0, <-ord.keyc)
+		var obj *js.Object
+		if len(size) == 0 {
+			obj = game.Get("make").Call("image", 0, 0, <-ord.keyc)
+		} else {
+			w, h := size[0], size[0]
+			if len(size) > 1 {
+				h = size[1]
+			}
+			obj = game.Get("make").Call("tileSprite", 0, 0, w, h, <-ord.keyc)
+		}
 		ord.ld <- true
 
 		obj.Set("alpha", 0)
